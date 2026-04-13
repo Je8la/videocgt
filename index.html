@@ -20,56 +20,23 @@
           <div class="brand-badge">CGT</div>
           <h1>Portale Video Tecnologie CGT-CAT</h1>
           <p>
-            Inquadra il QR code e accedi rapidamente a video istruzioni,
-            tutorial e contenuti tecnici consultabili anche da smartphone.
+            Di seguito video con istruzioni, tutorial e contenuti tecnici.
           </p>
         </div>
       </div>
     </header>
 
     <main class="container main-content">
-      <section class="intro-card">
-        <div>
-          <h2>Tecnologie CGT-CAT</h2>
-          <p>
-            Una raccolta di video utili per l’utilizzo delle tecnologie in modo
-            semplice, chiaro e immediato. Il portale è pensato per essere
-            aggiornato facilmente con nuovi contenuti.
-          </p>
-        </div>
-      </section>
-
       <section class="filters" aria-label="Filtri contenuti">
         <button class="filter-btn active" data-filter="tutti">Tutti</button>
         <button class="filter-btn" data-filter="video">Video</button>
         <button class="filter-btn" data-filter="short">Short</button>
       </section>
 
-      <section class="content-grid">
+      <section id="video-player-section" class="video-player-section"></section>
+
+      <section>
         <div id="video-list" class="video-list"></div>
-
-        <aside class="video-player-panel">
-          <div class="player-card">
-            <div class="player-wrapper">
-              <iframe
-                id="player-frame"
-                src=""
-                title=""
-                allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
-                allowfullscreen
-              ></iframe>
-            </div>
-
-            <div class="player-info">
-              <div class="video-meta-row">
-                <span id="player-type" class="video-type"></span>
-                <span id="player-category" class="video-category"></span>
-              </div>
-              <h2 id="player-title"></h2>
-              <p id="player-description"></p>
-            </div>
-          </div>
-        </aside>
       </section>
     </main>
 
