@@ -1,13 +1,9 @@
 const videos = window.CGT_VIDEOS || [];
 let activeFilter = 'tutti';
-let selectedVideoId = videos[0]?.id || null;
+let selectedVideoId = null;
 
 const listEl = document.getElementById('video-list');
-const playerFrame = document.getElementById('player-frame');
-const playerTitle = document.getElementById('player-title');
-const playerDescription = document.getElementById('player-description');
-const playerType = document.getElementById('player-type');
-const playerCategory = document.getElementById('player-category');
+const playerSectionEl = document.getElementById('video-player-section');
 const filterButtons = document.querySelectorAll('.filter-btn');
 
 function getThumb(youtubeId) {
@@ -21,35 +17,51 @@ function getFilteredVideos() {
 
 function getSelectedVideo() {
   const filtered = getFilteredVideos();
+
+  if (!filtered.length) return null;
+
   return (
     filtered.find((video) => video.id === selectedVideoId) ||
-    filtered[0] ||
-    videos[0] ||
     null
   );
 }
 
-function updatePlayer(video) {
-  if (!video) return;
+function renderPlayer(video) {
+  if (!video) {
+    playerSectionEl.innerHTML = '';
+    return;
+  }
 
-  playerFrame.src = `https://www.youtube.com/embed/${video.youtubeId}`;
-  playerFrame.title = video.title;
-  playerTitle.textContent = video.title;
-  playerDescription.textContent = video.description;
-  playerType.textContent = video.type.toUpperCase();
-  playerCategory.textContent = video.category;
+  playerSectionEl.innerHTML = `
+    <div class="player-card">
+      <div class="player-wrapper">
+        <iframe
+          src="https://www.youtube.com/embed/${video.youtubeId}"
+          title="${video.title}"
+          allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+          allowfullscreen
+        ></iframe>
+      </div>
+
+      <div class="player-info">
+        <div class="video-meta-row">
+          <span class="video-type">${video.type.toUpperCase()}</span>
+          <span class="video-category">${video.category}</span>
+        </div>
+        <h2>${video.title}</h2>
+        <p>${video.description}</p>
+      </div>
+    </div>
+  `;
 }
 
 function renderList() {
   const filtered = getFilteredVideos();
 
   if (!filtered.length) {
-    listEl.innerHTML = '<div class="intro-card"><p>Nessun contenuto disponibile.</p></div>';
+    listEl.innerHTML =
+      '<div class="player-card"><div class="player-info"><p>Nessun contenuto disponibile.</p></div></div>';
     return;
-  }
-
-  if (!filtered.some((video) => video.id === selectedVideoId)) {
-    selectedVideoId = filtered[0].id;
   }
 
   listEl.innerHTML = filtered
@@ -79,6 +91,7 @@ function renderList() {
     button.addEventListener('click', () => {
       selectedVideoId = button.getAttribute('data-video-id');
       render();
+      playerSectionEl.scrollIntoView({ behavior: 'smooth', block: 'start' });
     });
   });
 }
@@ -89,6 +102,7 @@ function renderFilters() {
     btn.classList.toggle('active', value === activeFilter);
     btn.onclick = () => {
       activeFilter = value;
+      selectedVideoId = null;
       render();
     };
   });
@@ -96,8 +110,8 @@ function renderFilters() {
 
 function render() {
   renderFilters();
+  renderPlayer(getSelectedVideo());
   renderList();
-  updatePlayer(getSelectedVideo());
 }
 
 render();
