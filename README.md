@@ -21,7 +21,7 @@ Permettere all’utente di:
 - index.html - struttura pagina
 - styles.css - stile grafico e responsive
 - videos.js - archivio contenuti video
-- script.js - logica di rendering, ricerca e filtro
+- script.js - logica di rendering, ricerca, filtro e paginazione
 
 ## Gestione contenuti
 Per aggiungere un nuovo video, inserire un nuovo oggetto nell’array presente in 'videos.js' con la seguente struttura:
@@ -34,5 +34,5 @@ Per aggiungere un nuovo video, inserire un nuovo oggetto nell’array presente i
   theme: 'Macro tema',
   tag: 'Tag o tipologia',
   youtubeId: 'ID YouTube',
-  featured: false
+  homepage: false
 }
