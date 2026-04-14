@@ -1,1 +1,29 @@
-
+[
+  {
+    "id": "cat-grade-3d",
+    "title": "Cat Grade 3D, l'esperienza di Cunaccia Bruno Srl",
+    "description": "Caso reale di utilizzo della tecnologia Cat Grade 3D.",
+    "theme": "CAT Grade 3D",
+    "tag": "Testimonianze",
+    "youtubeId": "vBAl0JukQp8",
+    "homepage": true
+  },
+  {
+    "id": "personalizzazione-schermata",
+    "title": "Personalizzazione schermata di lavoro",
+    "description": "Tutorial rapido per configurare la schermata di lavoro.",
+    "theme": "CAT Grade 3D",
+    "tag": "Tutorial",
+    "youtubeId": "qg_hVLB3qug",
+    "homepage": true
+  },
+  {
+    "id": "progetto-remoto",
+    "title": "Scaricare e selezionare sulla macchina un progetto inviato da remoto",
+    "description": "Procedura per scaricare e selezionare un progetto inviato da remoto.",
+    "theme": "CAT Grade 3D",
+    "tag": "Tutorial",
+    "youtubeId": "myKvJujZil8",
+    "homepage": true
+  }
+]
