@@ -8,10 +8,7 @@
       name="description"
       content="Portale video CGT per consultare contenuti tecnici via QR code."
     />
-    <meta
-      name="author"
-      content="Alejandro Febres Vilchez"
-    />
+    <meta name="author" content="Alejandro Febres Vilchez" />
     <meta
       name="application-name"
       content="Portale Video Tecnologie CGT-CAT"
@@ -21,9 +18,9 @@
   <body>
     <!--
       Progetto: Portale Video Tecnologie CGT-CAT
-      Scopo: accesso rapido via QR code a video istruzioni, tutorial e testimonianze.
+      Scopo: accesso rapido via QR code a video istruzioni, tutorial e contenuti tecnici.
       Proposta e sviluppo iniziale: Alejandro Febres Vilchez
-      Contesto: progetto interno CGT per consultazione mobile-friendly di contenuti tecnici.
+      Contesto: progetto interno CGT pensato per fruizione mobile-friendly e gestione scalabile dei contenuti.
     -->
 
     <header class="hero">
@@ -51,9 +48,9 @@
         </div>
 
         <div class="select-wrap">
-          <label for="tag-filter" class="sr-only">Filtra per argomento</label>
+          <label for="tag-filter" class="sr-only">Filtra per categoria</label>
           <select id="tag-filter" class="tag-select">
-            <option value="tutti">Tutti</option>
+            <option value="tutti">Seleziona categoria</option>
             <option value="CAT Grade 3D">CAT Grade 3D</option>
             <option value="Tutorial">Tutorial</option>
             <option value="Testimonianze">Testimonianze</option>
@@ -61,8 +58,16 @@
         </div>
       </section>
 
+      <section class="results-info-wrap">
+        <div id="results-info" class="results-info"></div>
+      </section>
+
       <section>
         <div id="video-list" class="video-list"></div>
+      </section>
+
+      <section class="pagination-wrap">
+        <div id="pagination" class="pagination"></div>
       </section>
     </main>
 
