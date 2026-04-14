@@ -3,10 +3,15 @@ const videos = window.CGT_VIDEOS || [];
 let openVideoId = null;
 let currentSearch = '';
 let currentTagFilter = 'tutti';
+let currentPage = 1;
+
+const PAGE_SIZE = 10;
 
 const listEl = document.getElementById('video-list');
 const searchInput = document.getElementById('search-input');
 const tagFilter = document.getElementById('tag-filter');
+const paginationEl = document.getElementById('pagination');
+const resultsInfoEl = document.getElementById('results-info');
 
 function getThumb(youtubeId) {
   return `https://img.youtube.com/vi/${youtubeId}/hqdefault.jpg`;
@@ -16,7 +21,27 @@ function normalizeText(value) {
   return (value || '').toString().trim().toLowerCase();
 }
 
+function hasActiveSearch() {
+  return currentSearch.length > 0;
+}
+
+function hasActiveFilter() {
+  return normalizeText(currentTagFilter) !== 'tutti';
+}
+
+function getHomepageVideos() {
+  return videos.filter((video) => video.homepage).slice(0, 5);
+}
+
 function getFilteredVideos() {
+  const searchActive = hasActiveSearch();
+  const filterActive = hasActiveFilter();
+
+  // Home iniziale: massimo 5 video marcati come homepage
+  if (!searchActive && !filterActive) {
+    return getHomepageVideos();
+  }
+
   return videos.filter((video) => {
     const title = normalizeText(video.title);
     const description = normalizeText(video.description);
@@ -24,7 +49,7 @@ function getFilteredVideos() {
     const tag = normalizeText(video.tag);
 
     const matchesSearch =
-      !currentSearch ||
+      !searchActive ||
       title.includes(currentSearch) ||
       description.includes(currentSearch) ||
       theme.includes(currentSearch) ||
@@ -41,8 +66,58 @@ function getFilteredVideos() {
   });
 }
 
+function getPaginatedVideos(filteredVideos) {
+  const start = (currentPage - 1) * PAGE_SIZE;
+  return filteredVideos.slice(start, start + PAGE_SIZE);
+}
+
+function renderResultsInfo(totalResults) {
+  const searchActive = hasActiveSearch();
+  const filterActive = hasActiveFilter();
+
+  if (!searchActive && !filterActive) {
+    resultsInfoEl.textContent = `In evidenza: ${totalResults} contenuti`;
+    return;
+  }
+
+  resultsInfoEl.textContent = `${totalResults} contenuti trovati`;
+}
+
+function renderPagination(totalResults) {
+  const totalPages = Math.ceil(totalResults / PAGE_SIZE);
+
+  if (totalPages <= 1) {
+    paginationEl.innerHTML = '';
+    return;
+  }
+
+  let html = '';
+
+  for (let i = 1; i <= totalPages; i++) {
+    html += `
+      <button class="page-btn ${i === currentPage ? 'active' : ''}" data-page="${i}">
+        ${i}
+      </button>
+    `;
+  }
+
+  paginationEl.innerHTML = html;
+
+  paginationEl.querySelectorAll('[data-page]').forEach((btn) => {
+    btn.addEventListener('click', () => {
+      currentPage = Number(btn.getAttribute('data-page'));
+      openVideoId = null;
+      renderList();
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+    });
+  });
+}
+
 function renderList() {
   const filtered = getFilteredVideos();
+  const paginated = getPaginatedVideos(filtered);
+
+  renderResultsInfo(filtered.length);
 
   if (!filtered.length) {
     listEl.innerHTML = `
@@ -50,10 +125,11 @@ function renderList() {
         Nessun contenuto trovato con i filtri selezionati.
       </div>
     `;
+    paginationEl.innerHTML = '';
     return;
   }
 
-  listEl.innerHTML = filtered
+  listEl.innerHTML = paginated
     .map((video) => {
       const isOpen = video.id === openVideoId;
 
@@ -93,21 +169,22 @@ function renderList() {
     })
     .join('');
 
-  const cards = listEl.querySelectorAll('[data-video-id]');
-
-  cards.forEach((card) => {
+  listEl.querySelectorAll('[data-video-id]').forEach((card) => {
     card.addEventListener('click', () => {
       const id = card.getAttribute('data-video-id');
       openVideoId = openVideoId === id ? null : id;
       renderList();
     });
   });
+
+  renderPagination(filtered.length);
 }
 
 function bindFilters() {
   if (searchInput) {
     searchInput.addEventListener('input', (event) => {
       currentSearch = normalizeText(event.target.value);
+      currentPage = 1;
       openVideoId = null;
       renderList();
     });
@@ -116,6 +193,7 @@ function bindFilters() {
   if (tagFilter) {
     tagFilter.addEventListener('change', (event) => {
       currentTagFilter = event.target.value;
+      currentPage = 1;
       openVideoId = null;
       renderList();
     });
