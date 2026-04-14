@@ -1,54 +1,81 @@
 const videos = window.CGT_VIDEOS || [];
-let activeFilter = 'tutti';
 let openVideoId = null;
+let currentSearch = '';
+let currentTagFilter = 'tutti';
 
 const listEl = document.getElementById('video-list');
-const filterButtons = document.querySelectorAll('.filter-btn');
+const searchInput = document.getElementById('search-input');
+const tagFilter = document.getElementById('tag-filter');
 
 function getThumb(youtubeId) {
   return `https://img.youtube.com/vi/${youtubeId}/hqdefault.jpg`;
 }
 
+function normalizeText(value) {
+  return (value || '').toString().trim().toLowerCase();
+}
+
 function getFilteredVideos() {
-  if (activeFilter === 'tutti') return videos;
-  return videos.filter((video) => video.type === activeFilter);
+  return videos.filter((video) => {
+    const matchesText =
+      currentSearch === '' ||
+      normalizeText(video.title).includes(currentSearch) ||
+      normalizeText(video.description).includes(currentSearch) ||
+      normalizeText(video.theme).includes(currentSearch) ||
+      normalizeText(video.tag).includes(currentSearch);
+
+    const matchesTag =
+      currentTagFilter === 'tutti' ||
+      video.theme === currentTagFilter ||
+      video.tag === currentTagFilter;
+
+    return matchesText && matchesTag;
+  });
 }
 
 function renderList() {
   const filtered = getFilteredVideos();
+
+  if (!filtered.length) {
+    listEl.innerHTML = `
+      <div class="empty-state">
+        Nessun contenuto trovato con i filtri selezionati.
+      </div>
+    `;
+    return;
+  }
 
   listEl.innerHTML = filtered
     .map((video) => {
       const isOpen = video.id === openVideoId;
 
       return `
-        <div class="video-card" data-video-id="${video.id}">
-          
+        <div class="video-card ${isOpen ? 'selected' : ''}" data-video-id="${video.id}">
           ${
             isOpen
               ? `
-            <div class="player-wrapper">
-              <iframe
-                src="https://www.youtube.com/embed/${video.youtubeId}?autoplay=1"
-                title="${video.title}"
-                allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
-                allowfullscreen
-              ></iframe>
-            </div>
-          `
+                <div class="player-wrapper">
+                  <iframe
+                    src="https://www.youtube.com/embed/${video.youtubeId}?autoplay=1"
+                    title="${video.title}"
+                    allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                    allowfullscreen
+                  ></iframe>
+                </div>
+              `
               : `
-            <img
-              src="${getThumb(video.youtubeId)}"
-              alt="${video.title}"
-              class="video-thumb"
-            />
-          `
+                <img
+                  src="${getThumb(video.youtubeId)}"
+                  alt="${video.title}"
+                  class="video-thumb"
+                />
+              `
           }
 
           <div class="video-card-body">
             <div class="video-meta-row">
-              <span class="video-type">${video.type.toUpperCase()}</span>
-              <span class="video-category">${video.category}</span>
+              <span class="video-theme">${video.theme}</span>
+              <span class="video-tag">${video.tag}</span>
             </div>
             <h3>${video.title}</h3>
             <p>${video.description}</p>
@@ -61,28 +88,28 @@ function renderList() {
   listEl.querySelectorAll('[data-video-id]').forEach((card) => {
     card.addEventListener('click', () => {
       const id = card.getAttribute('data-video-id');
-
       openVideoId = openVideoId === id ? null : id;
       renderList();
     });
   });
 }
 
-function renderFilters() {
-  filterButtons.forEach((btn) => {
-    const value = btn.getAttribute('data-filter');
-    btn.classList.toggle('active', value === activeFilter);
+function bindFilters() {
+  searchInput.addEventListener('input', (event) => {
+    currentSearch = normalizeText(event.target.value);
+    openVideoId = null;
+    renderList();
+  });
 
-    btn.onclick = () => {
-      activeFilter = value;
-      openVideoId = null;
-      renderList();
-    };
+  tagFilter.addEventListener('change', (event) => {
+    currentTagFilter = event.target.value;
+    openVideoId = null;
+    renderList();
   });
 }
 
 function render() {
-  renderFilters();
+  bindFilters();
   renderList();
 }
 
