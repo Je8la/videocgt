@@ -23,7 +23,7 @@ function normalizeText(value) {
 
 async function loadVideos() {
   try {
-    const response = await fetch('./videos.json');
+    const response = await fetch('videos.json');
 
     if (!response.ok) {
       throw new Error(`Errore caricamento videos.json: ${response.status}`);
