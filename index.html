@@ -37,7 +37,7 @@
 
     <main class="container main-content">
       <section class="filters-panel" aria-label="Ricerca e filtri contenuti">
-        <div class="search-wrap">
+        <div class="search-wrap search-wrap-full">
           <label for="search-input" class="sr-only">Cerca video</label>
           <input
             id="search-input"
@@ -45,6 +45,13 @@
             type="text"
             placeholder="Cerca video, argomento o parola chiave..."
           />
+        </div>
+
+        <div class="select-wrap">
+          <label for="family-filter" class="sr-only">Filtra per famiglia macchina</label>
+          <select id="family-filter" class="tag-select">
+            <option value="tutti">Seleziona famiglia</option>
+          </select>
         </div>
 
         <div class="select-wrap">
