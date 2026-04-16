@@ -63,7 +63,9 @@ body {
 
 .brand-logo {
   height: 45px;
-  filter: drop-shadow(0 2px 4px rgba(0,0,0,0.4));
+  width: auto;
+  display: block;
+  filter: drop-shadow(0 2px 4px rgba(0, 0, 0, 0.4));
 }
 
 .hero h1 {
@@ -87,15 +89,27 @@ body {
 
 .filters-panel {
   display: grid;
-  grid-template-columns: 1.5fr 0.8fr;
+  grid-template-columns: 1fr 1fr;
   gap: 14px;
   margin: 24px 0 12px;
   align-items: stretch;
 }
 
+.search-wrap-full {
+  grid-column: 1 / -1;
+}
+
 .search-wrap,
 .select-wrap {
   width: 100%;
+}
+
+.filter-label {
+  display: block;
+  margin-bottom: 8px;
+  font-size: 0.95rem;
+  font-weight: 700;
+  color: var(--text);
 }
 
 .search-input,
@@ -269,6 +283,10 @@ body {
 @media (max-width: 768px) {
   .filters-panel {
     grid-template-columns: 1fr;
+  }
+
+  .search-wrap-full {
+    grid-column: auto;
   }
 }
 
