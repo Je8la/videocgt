@@ -3,6 +3,7 @@ let videos = [];
 let openVideoId = null;
 let currentSearch = '';
 let currentCategoryFilter = 'tutti';
+let currentFamilyFilter = 'tutti';
 let currentPage = 1;
 
 const PAGE_SIZE = 10;
@@ -10,264 +11,160 @@ const PAGE_SIZE = 10;
 const listEl = document.getElementById('video-list');
 const searchInput = document.getElementById('search-input');
 const tagFilter = document.getElementById('tag-filter');
+const familyFilter = document.getElementById('family-filter');
 const paginationEl = document.getElementById('pagination');
 const resultsInfoEl = document.getElementById('results-info');
 
-function getThumb(youtubeId) {
-  return `https://img.youtube.com/vi/${youtubeId}/hqdefault.jpg`;
-}
-
 function normalizeText(value) {
-  return (value || '').toString().trim().toLowerCase();
+  return (value || '').toString().toLowerCase().trim();
 }
 
-function isHomepageVideo(video) {
-  return video.homepage === true || normalizeText(video.homepage) === 'true';
+function getThumb(id) {
+  return `https://img.youtube.com/vi/${id}/hqdefault.jpg`;
 }
 
-function getVideoTags(video) {
-  return (video.tag || '')
-    .split(',')
-    .map((tag) => tag.trim())
-    .filter(Boolean);
+function isHomepageVideo(v) {
+  return v.homepage === true || normalizeText(v.homepage) === 'true';
 }
 
-function getVideoCategories(video) {
-  const categories = [];
-
-  if (video.theme) {
-    categories.push(video.theme);
-  }
-
-  categories.push(...getVideoTags(video));
-
-  return [...new Set(categories)];
+function getTags(video) {
+  return (video.tag || '').split(',').map(t => t.trim());
 }
 
 async function loadVideos() {
-  try {
-    const response = await fetch('videos.json');
+  const res = await fetch('videos.json');
+  videos = await res.json();
 
-    if (!response.ok) {
-      throw new Error(`Errore caricamento videos.json: ${response.status}`);
-    }
-
-    videos = await response.json();
-    buildFilterOptions();
-    renderList();
-  } catch (error) {
-    console.error(error);
-    listEl.innerHTML = `
-      <div class="empty-state">
-        Errore nel caricamento dei contenuti video.
-      </div>
-    `;
-    paginationEl.innerHTML = '';
-    resultsInfoEl.textContent = '';
-  }
+  buildFilters();
+  render();
 }
 
-function buildFilterOptions() {
-  if (!tagFilter) return;
+function buildFilters() {
+  const families = new Set();
+  const categories = new Set();
 
-  const values = new Set();
-
-  videos.forEach((video) => {
-    getVideoCategories(video).forEach((value) => {
-      if (value) values.add(value);
-    });
+  videos.forEach(v => {
+    if (v.family) families.add(v.family);
+    if (v.theme) categories.add(v.theme);
+    getTags(v).forEach(t => categories.add(t));
   });
 
-  const sortedValues = [...values].sort((a, b) =>
-    a.localeCompare(b, 'it', { sensitivity: 'base' })
-  );
+  familyFilter.innerHTML =
+    `<option value="tutti">Seleziona famiglia</option>` +
+    [...families].map(f => `<option>${f}</option>`).join('');
 
-  tagFilter.innerHTML = `
-    <option value="tutti">Seleziona categoria</option>
-    ${sortedValues
-      .map((value) => `<option value="${value}">${value}</option>`)
-      .join('')}
-  `;
-}
-
-function hasActiveSearch() {
-  return currentSearch.length > 0;
-}
-
-function hasActiveFilter() {
-  return normalizeText(currentCategoryFilter) !== 'tutti';
-}
-
-function getHomepageVideos() {
-  return videos.filter((video) => isHomepageVideo(video)).slice(0, 5);
+  tagFilter.innerHTML =
+    `<option value="tutti">Seleziona categoria</option>` +
+    [...categories].map(c => `<option>${c}</option>`).join('');
 }
 
 function getFilteredVideos() {
-  const searchActive = hasActiveSearch();
-  const filterActive = hasActiveFilter();
+  let result = videos;
 
-  if (!searchActive && !filterActive) {
-    return getHomepageVideos();
+  const search = normalizeText(currentSearch);
+  const cat = normalizeText(currentCategoryFilter);
+  const fam = normalizeText(currentFamilyFilter);
+
+  if (!search && cat === 'tutti' && fam === 'tutti') {
+    return videos.filter(isHomepageVideo).slice(0, 5);
   }
 
-  return videos.filter((video) => {
-    const title = normalizeText(video.title);
-    const description = normalizeText(video.description);
-    const theme = normalizeText(video.theme);
-    const tags = getVideoTags(video).map(normalizeText);
+  return result.filter(v => {
+    const text = normalizeText(v.title + v.description);
+    const theme = normalizeText(v.theme);
+    const family = normalizeText(v.family);
+    const tags = getTags(v).map(normalizeText);
 
-    const matchesSearch =
-      !searchActive ||
-      title.includes(currentSearch) ||
-      description.includes(currentSearch) ||
-      theme.includes(currentSearch) ||
-      tags.some((tag) => tag.includes(currentSearch));
-
-    const selectedFilter = normalizeText(currentCategoryFilter);
-
-    const matchesFilter =
-      selectedFilter === 'tutti' ||
-      theme === selectedFilter ||
-      tags.includes(selectedFilter);
-
-    return matchesSearch && matchesFilter;
+    return (
+      (!search || text.includes(search)) &&
+      (cat === 'tutti' || theme === cat || tags.includes(cat)) &&
+      (fam === 'tutti' || family === fam)
+    );
   });
 }
 
-function getPaginatedVideos(filteredVideos) {
-  const start = (currentPage - 1) * PAGE_SIZE;
-  return filteredVideos.slice(start, start + PAGE_SIZE);
-}
-
-function renderResultsInfo(totalResults) {
-  const searchActive = hasActiveSearch();
-  const filterActive = hasActiveFilter();
-
-  if (!searchActive && !filterActive) {
-    resultsInfoEl.textContent = `In evidenza: ${totalResults} contenuti`;
-    return;
-  }
-
-  resultsInfoEl.textContent = `${totalResults} contenuti trovati`;
-}
-
-function renderPagination(totalResults) {
-  const totalPages = Math.ceil(totalResults / PAGE_SIZE);
-
-  if (totalPages <= 1) {
-    paginationEl.innerHTML = '';
-    return;
-  }
-
-  let html = '';
-
-  for (let i = 1; i <= totalPages; i++) {
-    html += `
-      <button class="page-btn ${i === currentPage ? 'active' : ''}" data-page="${i}">
-        ${i}
-      </button>
-    `;
-  }
-
-  paginationEl.innerHTML = html;
-
-  paginationEl.querySelectorAll('[data-page]').forEach((btn) => {
-    btn.addEventListener('click', () => {
-      currentPage = Number(btn.getAttribute('data-page'));
-      openVideoId = null;
-      renderList();
-      window.scrollTo({ top: 0, behavior: 'smooth' });
-    });
-  });
-}
-
-function renderList() {
+function render() {
   const filtered = getFilteredVideos();
-  const paginated = getPaginatedVideos(filtered);
+  const start = (currentPage - 1) * PAGE_SIZE;
+  const page = filtered.slice(start, start + PAGE_SIZE);
 
-  renderResultsInfo(filtered.length);
+  resultsInfoEl.textContent = `${filtered.length} contenuti`;
 
-  if (!filtered.length) {
-    listEl.innerHTML = `
-      <div class="empty-state">
-        Nessun contenuto trovato con i filtri selezionati.
+  listEl.innerHTML = page.map(v => {
+    const isOpen = String(v.id) === String(openVideoId);
+
+    return `
+      <div class="video-card ${isOpen ? 'selected' : ''}" data-id="${v.id}">
+
+        ${isOpen
+          ? `<div class="player-wrapper">
+              <iframe src="https://www.youtube.com/embed/${v.youtubeId}?autoplay=1"></iframe>
+            </div>`
+          : `<img src="${getThumb(v.youtubeId)}" class="video-thumb">`
+        }
+
+        <div class="video-card-body">
+          <div class="video-meta-row">
+            <span class="video-theme">${v.family}</span>
+            <span class="video-theme">${v.theme}</span>
+            ${getTags(v).map(t => `<span class="video-tag">${t}</span>`).join('')}
+          </div>
+          <h3>${v.title}</h3>
+          <p>${v.description}</p>
+        </div>
+
       </div>
     `;
-    paginationEl.innerHTML = '';
-    return;
-  }
+  }).join('');
 
-  listEl.innerHTML = paginated
-    .map((video) => {
-      const isOpen = video.id === openVideoId;
-      const tags = getVideoTags(video);
-
-      return `
-        <div class="video-card ${isOpen ? 'selected' : ''}" data-video-id="${video.id}">
-          ${
-            isOpen
-              ? `
-                <div class="player-wrapper">
-                  <iframe
-                    src="https://www.youtube.com/embed/${video.youtubeId}?autoplay=1"
-                    title="${video.title}"
-                    allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
-                    allowfullscreen
-                  ></iframe>
-                </div>
-              `
-              : `
-                <img
-                  src="${getThumb(video.youtubeId)}"
-                  alt="${video.title}"
-                  class="video-thumb"
-                />
-              `
-          }
-
-          <div class="video-card-body">
-            <div class="video-meta-row">
-              ${video.theme ? `<span class="video-theme">${video.theme}</span>` : ''}
-              ${tags.map((tag) => `<span class="video-tag">${tag}</span>`).join('')}
-            </div>
-            <h3>${video.title}</h3>
-            <p>${video.description}</p>
-          </div>
-        </div>
-      `;
-    })
-    .join('');
-
-  listEl.querySelectorAll('[data-video-id]').forEach((card) => {
-    card.addEventListener('click', () => {
-      const id = card.getAttribute('data-video-id');
+  document.querySelectorAll('.video-card').forEach(el => {
+    el.onclick = () => {
+      const id = el.dataset.id;
       openVideoId = openVideoId === id ? null : id;
-      renderList();
-    });
+      render();
+    };
   });
 
   renderPagination(filtered.length);
 }
 
-function bindFilters() {
-  if (searchInput) {
-    searchInput.addEventListener('input', (event) => {
-      currentSearch = normalizeText(event.target.value);
-      currentPage = 1;
-      openVideoId = null;
-      renderList();
-    });
-  }
+function renderPagination(total) {
+  const pages = Math.ceil(total / PAGE_SIZE);
+  if (pages <= 1) return paginationEl.innerHTML = '';
 
-  if (tagFilter) {
-    tagFilter.addEventListener('change', (event) => {
-      currentCategoryFilter = event.target.value;
-      currentPage = 1;
-      openVideoId = null;
-      renderList();
-    });
-  }
+  paginationEl.innerHTML = [...Array(pages)]
+    .map((_, i) =>
+      `<button class="page-btn ${i+1===currentPage?'active':''}" data-p="${i+1}">${i+1}</button>`
+    ).join('');
+
+  document.querySelectorAll('.page-btn').forEach(btn => {
+    btn.onclick = () => {
+      currentPage = Number(btn.dataset.p);
+      render();
+      window.scrollTo({top:0});
+    };
+  });
 }
 
-bindFilters();
+searchInput.oninput = e => {
+  currentSearch = e.target.value;
+  currentPage = 1;
+  openVideoId = null;
+  render();
+};
+
+tagFilter.onchange = e => {
+  currentCategoryFilter = e.target.value;
+  currentPage = 1;
+  openVideoId = null;
+  render();
+};
+
+familyFilter.onchange = e => {
+  currentFamilyFilter = e.target.value;
+  currentPage = 1;
+  openVideoId = null;
+  render();
+};
+
 loadVideos();
