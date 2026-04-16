@@ -2,169 +2,231 @@ let videos = [];
 
 let openVideoId = null;
 let currentSearch = '';
-let currentCategoryFilter = 'tutti';
 let currentFamilyFilter = 'tutti';
+let currentCategoryFilter = 'tutti';
 let currentPage = 1;
 
 const PAGE_SIZE = 10;
 
 const listEl = document.getElementById('video-list');
 const searchInput = document.getElementById('search-input');
-const tagFilter = document.getElementById('tag-filter');
 const familyFilter = document.getElementById('family-filter');
+const tagFilter = document.getElementById('tag-filter');
 const paginationEl = document.getElementById('pagination');
 const resultsInfoEl = document.getElementById('results-info');
 
 function normalizeText(value) {
-  return (value || '').toString().toLowerCase().trim();
+  return (value || '').toString().trim().toLowerCase();
 }
 
-function getThumb(id) {
-  return `https://img.youtube.com/vi/${id}/hqdefault.jpg`;
+function getThumb(youtubeId) {
+  return `https://img.youtube.com/vi/${youtubeId}/hqdefault.jpg`;
 }
 
-function isHomepageVideo(v) {
-  return v.homepage === true || normalizeText(v.homepage) === 'true';
+function getVideoTags(video) {
+  return (video.tag || '')
+    .split(',')
+    .map((t) => t.trim())
+    .filter(Boolean);
 }
 
-function getTags(video) {
-  return (video.tag || '').split(',').map(t => t.trim());
+function isHomepageVideo(video) {
+  return video.homepage === true || normalizeText(video.homepage) === 'true';
 }
 
 async function loadVideos() {
-  const res = await fetch('videos.json');
-  videos = await res.json();
+  try {
+    const res = await fetch('videos.json');
 
-  buildFilters();
-  render();
+    if (!res.ok) throw new Error('Errore caricamento JSON');
+
+    videos = await res.json();
+
+    buildFamilyFilter();
+    buildCategoryFilter();
+    renderList();
+  } catch (err) {
+    console.error(err);
+    listEl.innerHTML = `<div class="empty-state">Errore nel caricamento dei contenuti video.</div>`;
+  }
 }
 
-function buildFilters() {
+function buildFamilyFilter() {
   const families = new Set();
-  const categories = new Set();
 
-  videos.forEach(v => {
+  videos.forEach((v) => {
     if (v.family) families.add(v.family);
-    if (v.theme) categories.add(v.theme);
-    getTags(v).forEach(t => categories.add(t));
   });
 
-  familyFilter.innerHTML =
-    `<option value="tutti">Seleziona famiglia</option>` +
-    [...families].map(f => `<option>${f}</option>`).join('');
+  familyFilter.innerHTML = `
+    <option value="tutti">Seleziona famiglia</option>
+    ${[...families].sort().map(f => `<option value="${f}">${f}</option>`).join('')}
+  `;
+}
 
-  tagFilter.innerHTML =
-    `<option value="tutti">Seleziona categoria</option>` +
-    [...categories].map(c => `<option>${c}</option>`).join('');
+function buildCategoryFilter() {
+  const categories = new Set();
+
+  videos
+    .filter(v => currentFamilyFilter === 'tutti' || v.family === currentFamilyFilter)
+    .forEach(v => {
+      if (v.theme) categories.add(v.theme);
+      getVideoTags(v).forEach(t => categories.add(t));
+    });
+
+  tagFilter.innerHTML = `
+    <option value="tutti">Seleziona categoria</option>
+    ${[...categories].sort().map(c => `<option value="${c}">${c}</option>`).join('')}
+  `;
 }
 
 function getFilteredVideos() {
-  let result = videos;
+  const searchActive = currentSearch.length > 0;
 
-  const search = normalizeText(currentSearch);
-  const cat = normalizeText(currentCategoryFilter);
-  const fam = normalizeText(currentFamilyFilter);
-
-  if (!search && cat === 'tutti' && fam === 'tutti') {
+  if (!searchActive && currentFamilyFilter === 'tutti' && currentCategoryFilter === 'tutti') {
     return videos.filter(isHomepageVideo).slice(0, 5);
   }
 
-  return result.filter(v => {
-    const text = normalizeText(v.title + v.description);
+  return videos.filter(v => {
+    const title = normalizeText(v.title);
+    const desc = normalizeText(v.description);
     const theme = normalizeText(v.theme);
-    const family = normalizeText(v.family);
-    const tags = getTags(v).map(normalizeText);
+    const tags = getVideoTags(v).map(normalizeText);
 
-    return (
-      (!search || text.includes(search)) &&
-      (cat === 'tutti' || theme === cat || tags.includes(cat)) &&
-      (fam === 'tutti' || family === fam)
-    );
+    const matchesSearch =
+      !searchActive ||
+      title.includes(currentSearch) ||
+      desc.includes(currentSearch) ||
+      theme.includes(currentSearch) ||
+      tags.some(t => t.includes(currentSearch));
+
+    const matchesFamily =
+      currentFamilyFilter === 'tutti' ||
+      v.family === currentFamilyFilter;
+
+    const selectedCat = normalizeText(currentCategoryFilter);
+
+    const matchesCategory =
+      selectedCat === 'tutti' ||
+      theme === selectedCat ||
+      tags.includes(selectedCat);
+
+    return matchesSearch && matchesFamily && matchesCategory;
   });
 }
 
-function render() {
-  const filtered = getFilteredVideos();
+function getPaginatedVideos(list) {
   const start = (currentPage - 1) * PAGE_SIZE;
-  const page = filtered.slice(start, start + PAGE_SIZE);
+  return list.slice(start, start + PAGE_SIZE);
+}
 
-  resultsInfoEl.textContent = `${filtered.length} contenuti`;
+function renderResultsInfo(total) {
+  if (!currentSearch && currentFamilyFilter === 'tutti' && currentCategoryFilter === 'tutti') {
+    resultsInfoEl.textContent = `In evidenza: ${total} contenuti`;
+  } else {
+    resultsInfoEl.textContent = `${total} contenuti trovati`;
+  }
+}
 
-  listEl.innerHTML = page.map(v => {
-    const isOpen = String(v.id) === String(openVideoId);
+function renderPagination(total) {
+  const pages = Math.ceil(total / PAGE_SIZE);
+
+  if (pages <= 1) {
+    paginationEl.innerHTML = '';
+    return;
+  }
+
+  let html = '';
+
+  for (let i = 1; i <= pages; i++) {
+    html += `<button class="page-btn ${i === currentPage ? 'active' : ''}" data-page="${i}">${i}</button>`;
+  }
+
+  paginationEl.innerHTML = html;
+
+  paginationEl.querySelectorAll('[data-page]').forEach(btn => {
+    btn.onclick = () => {
+      currentPage = Number(btn.dataset.page);
+      openVideoId = null;
+      renderList();
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+    };
+  });
+}
+
+function renderList() {
+  const filtered = getFilteredVideos();
+  const paginated = getPaginatedVideos(filtered);
+
+  renderResultsInfo(filtered.length);
+
+  if (!filtered.length) {
+    listEl.innerHTML = `<div class="empty-state">Nessun contenuto trovato.</div>`;
+    paginationEl.innerHTML = '';
+    return;
+  }
+
+  listEl.innerHTML = paginated.map(v => {
+    const isOpen = v.id === openVideoId;
+    const tags = getVideoTags(v);
 
     return `
       <div class="video-card ${isOpen ? 'selected' : ''}" data-id="${v.id}">
-
-        ${isOpen
-          ? `<div class="player-wrapper">
-              <iframe src="https://www.youtube.com/embed/${v.youtubeId}?autoplay=1"></iframe>
-            </div>`
-          : `<img src="${getThumb(v.youtubeId)}" class="video-thumb">`
+        ${
+          isOpen
+            ? `<div class="player-wrapper">
+                <iframe src="https://www.youtube.com/embed/${v.youtubeId}?autoplay=1" allowfullscreen></iframe>
+               </div>`
+            : `<img src="${getThumb(v.youtubeId)}" class="video-thumb"/>`
         }
 
         <div class="video-card-body">
           <div class="video-meta-row">
-            <span class="video-theme">${v.family}</span>
-            <span class="video-theme">${v.theme}</span>
-            ${getTags(v).map(t => `<span class="video-tag">${t}</span>`).join('')}
+            ${v.family ? `<span class="video-theme">${v.family}</span>` : ''}
+            ${v.theme ? `<span class="video-theme">${v.theme}</span>` : ''}
+            ${tags.map(t => `<span class="video-tag">${t}</span>`).join('')}
           </div>
+
           <h3>${v.title}</h3>
           <p>${v.description}</p>
         </div>
-
       </div>
     `;
   }).join('');
 
-  document.querySelectorAll('.video-card').forEach(el => {
+  document.querySelectorAll('[data-id]').forEach(el => {
     el.onclick = () => {
       const id = el.dataset.id;
       openVideoId = openVideoId === id ? null : id;
-      render();
+      renderList();
     };
   });
 
   renderPagination(filtered.length);
 }
 
-function renderPagination(total) {
-  const pages = Math.ceil(total / PAGE_SIZE);
-  if (pages <= 1) return paginationEl.innerHTML = '';
+function bindEvents() {
+  searchInput.oninput = e => {
+    currentSearch = normalizeText(e.target.value);
+    currentPage = 1;
+    renderList();
+  };
 
-  paginationEl.innerHTML = [...Array(pages)]
-    .map((_, i) =>
-      `<button class="page-btn ${i+1===currentPage?'active':''}" data-p="${i+1}">${i+1}</button>`
-    ).join('');
+  familyFilter.onchange = e => {
+    currentFamilyFilter = e.target.value;
+    currentCategoryFilter = 'tutti';
+    currentPage = 1;
 
-  document.querySelectorAll('.page-btn').forEach(btn => {
-    btn.onclick = () => {
-      currentPage = Number(btn.dataset.p);
-      render();
-      window.scrollTo({top:0});
-    };
-  });
+    buildCategoryFilter();
+    renderList();
+  };
+
+  tagFilter.onchange = e => {
+    currentCategoryFilter = e.target.value;
+    currentPage = 1;
+    renderList();
+  };
 }
 
-searchInput.oninput = e => {
-  currentSearch = e.target.value;
-  currentPage = 1;
-  openVideoId = null;
-  render();
-};
-
-tagFilter.onchange = e => {
-  currentCategoryFilter = e.target.value;
-  currentPage = 1;
-  openVideoId = null;
-  render();
-};
-
-familyFilter.onchange = e => {
-  currentFamilyFilter = e.target.value;
-  currentPage = 1;
-  openVideoId = null;
-  render();
-};
-
+bindEvents();
 loadVideos();
