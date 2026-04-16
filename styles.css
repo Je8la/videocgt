@@ -62,9 +62,8 @@ body {
 }
 
 .brand-logo {
-  height: 35px;
-  width: auto;
-  display: block;
+  height: 45px;
+  filter: drop-shadow(0 2px 4px rgba(0,0,0,0.4));
 }
 
 .hero h1 {
